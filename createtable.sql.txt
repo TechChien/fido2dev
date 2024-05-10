@@ -1,0 +1,17 @@
+create table tbl_UserCredential(
+	userId varchar(50) not null, -- same as username from input html
+	credentialId varchar(200) not null,
+	publicKey varchar(300) not null,
+	userHandle varchar(200) not null, -- same as user.id when credential create
+	SignatureCounter int not null,
+	CredType varchar(50) not null default 'public-key',
+	RegDate datetime not null default NOW(),
+	AaGuid varchar(100) not null,
+	primary key (userId, credentialId, AaGuid)
+)
+
+
+create table tbl_temp(
+	userHandle varchar(200) not null,
+	challenge varchar(200) not null
+)
