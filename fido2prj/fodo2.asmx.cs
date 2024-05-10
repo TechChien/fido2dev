@@ -7,6 +7,8 @@ using System.Web.Script.Services;
 using System.Web.Services;
 
 using Newtonsoft.Json;
+using fido2prj.fido2Lib;
+
 
 namespace fido2prj
 {
@@ -26,6 +28,8 @@ namespace fido2prj
             public byte[] id;
         }
 
+        DBOperator dbo = new DBOperator();
+
         [WebMethod]
         [ScriptMethod(ResponseFormat = ResponseFormat.Json)]
         public void HelloFido2()
@@ -34,13 +38,20 @@ namespace fido2prj
             RandomNumberGenerator.Create().GetNonZeroBytes(chanllege);
 
             byte[] id = new byte[32];
-            RandomNumberGenerator.Create().GetNonZeroBytes(chanllege);
+            RandomNumberGenerator.Create().GetNonZeroBytes(id);
+
+            // store in database 
+            dbo.recordChanllegeDB(id, chanllege);
 
             RespData data = new RespData { challenge = chanllege, id= id };
             Context.Response.Write(JsonConvert.SerializeObject(data));
         }
 
-
+        [WebMethod]
+        public void VerifyRegistration()
+        {
+            
+        }
 
     }
 }
