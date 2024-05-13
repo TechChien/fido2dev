@@ -7,7 +7,7 @@ using System.Web.Script.Services;
 using System.Web.Services;
 
 using Newtonsoft.Json;
-using fido2prj.fido2Lib;
+using fido2prj.Fido2Lib;
 
 
 namespace fido2prj

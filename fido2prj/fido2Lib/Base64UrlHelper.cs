@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Web;
 
-namespace fido2prj.fido2Lib
+namespace fido2prj.Fido2Lib
 {
     public class Base64UrlHelper
     {

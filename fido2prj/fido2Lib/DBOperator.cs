@@ -3,8 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Web;
 using MySql.Data.MySqlClient;
-
-namespace fido2prj.fido2Lib
+ 
+namespace fido2prj.Fido2Lib
 {
     public class DBOperator
     {
