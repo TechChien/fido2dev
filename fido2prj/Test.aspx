@@ -8,7 +8,7 @@
     <title>FIDO TEST</title>
     <script src="Js/base64url.js" ></script>
     <script src="Js/cbor.js"></script>
-     <script src="https://cdnjs.cloudflare.com/ajax/libs/jsrsasign/8.0.20/jsrsasign-all-min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jsrsasign/8.0.20/jsrsasign-all-min.js"></script>
 </head>
 <body>
     <form id="form1" runat="server">       
@@ -22,10 +22,17 @@
                 <input type="text" id="displayname" />
             </div>
             <button id="register" type="button" role="button">Register</button>
+
+            <div>
+                <label for="loginUser">Username</label>
+                <input type="text" id="loginUser" />
+            </div>
+            <button id="login" type="button" role="button">Login</button>
         </div>
     </form>
 
     <script>
+        let newCredentialInfo;
 
         let hash = (alg, message) => {
             return crypto.createHash(alg).update(message).digest();
@@ -106,24 +113,32 @@
 
                 const { id: userid, challenge: challengeFromServer  } = await response.json();
 
-                const id = Uint8Array.from(window.atob(userid), c => c.charCodeAt(0))
-                const challenge = Uint8Array.from(challengeFromServer, c => c.charCodeAt(0))
+                const id = Uint8Array.from(decodeBase64url(userid), c => c.charCodeAt(0))
+                const challenge = Uint8Array.from(decodeBase64url(challengeFromServer), c => c.charCodeAt(0))
 
                 // create credential by navigator.credentials.create
                 const publicKey = {
                     challenge: challenge,
                     rp: {
-                        name: 'localhost'
+                        id: 'localhost',
+                        name: 'local jeffery'
                     },
                     user: {
-                        id: id,
-                        name : name,
-                        displayName : displayName,
+                        id,
+                        name,
+                        displayName
                     },
                     pubKeyCredParams: [
-                        { type: 'public-key', alg: -7 },
-                        { type: 'public-key', alg: -257 },
-                    ]
+                        {
+                            "type": "public-key",
+                            "alg": -7
+                        },
+                        {
+                            "type": "public-key",
+                            "alg": -257
+                        }
+                        ],
+                    attestation: "direct"
                 }
                 try {
                     newCredentialInfo = await navigator.credentials.create({ publicKey })
@@ -131,12 +146,119 @@
                 } catch (err) {
                     console.log('FAIL',err);
                 }
+                // credentialId is base64-encode
+                const { id: credentialId, rawId, response: { attestationObject, clientDataJSON } } = newCredentialInfo;
 
-                const { response: { attestationObject, clientDataJSON } } = newCredentialInfo;
-               
+                // decode clientDataJSON
+                const utf8Decoder = new TextDecoder('utf-8');
+                const decodedClientData = utf8Decoder.decode(newCredentialInfo.response.clientDataJSON)
+                const { challenge: challengeFromAuthenticator } = JSON.parse(decodedClientData);
 
+                // decode 
+                const decodedAttestationObj = CBOR.decode(newCredentialInfo.response.attestationObject);
+                const { authData, fmt, attStmt: { sig, x5c } } = decodedAttestationObj;
 
+                const data = {
+                    userid: name,
+                    credentialId: encodeUint8ArrayToBase64url(new Uint8Array(rawId)),
+                    clientData: encodeUint8ArrayToBase64url(new Uint8Array(clientDataJSON)),
+                    challenge: challengeFromAuthenticator,
+                    userHandle: userid,
+                    authData: encodeUint8ArrayToBase64url(authData),
+                    fmt,
+                    sig: encodeUint8ArrayToBase64url(sig),
+                    x5c: encodeUint8ArrayToBase64url(x5c[0])
+                };
+                console.log(data);
+                const r = await fetch('/fodo2.asmx/VerifyRegistration', {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": 'application/text; charset=utf-8;',
+                    },
+                    body: JSON.stringify(data)
+                })
+
+                const { status: statusFromRegisterVerify, data: dataFromRegisterVerify } = await r.json();
+                console.log(statusFromRegisterVerify, dataFromRegisterVerify )
+                if (statusFromRegisterVerify === 'OK') {
+                    alert('register success')
+                } else {
+                    alert('register fail')
+                }
             })
+
+            document.querySelector('#login').addEventListener('click', async function (e) {
+                e.preventDefault();
+                const loginUser = document.querySelector('#loginUser').value;
+                const response = await fetch('/fodo2.asmx/HelloFido2Authentication', {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": 'application/text; charset=utf-8;',
+                    },
+                    body: JSON.stringify({ username: loginUser })
+                })
+
+                const ddd = await response.json();
+                console.log(ddd);
+                const { credId: credentialId, challenge: challengeFromServer, credType, userHandle } = ddd;
+
+                const challenge = Uint8Array.from(decodeBase64url(challengeFromServer), c => c.charCodeAt(0))
+
+                const publicKeyCredentialRequestOptions = {
+                    challenge,
+                    allowCredentials: [{
+                        id: Uint8Array.from(
+                            decodeBase64url(credentialId), c => c.charCodeAt(0)),
+                        type: credType,
+                        transports: ['usb'],
+                    }],
+                    timeout: 60000
+                }
+
+                const Assertioncredential = await navigator.credentials.get({
+                    publicKey: publicKeyCredentialRequestOptions
+                });
+
+                if (!Assertioncredential) {
+                    alert('get assertion failed');
+                    return;
+                }
+
+                const { id: cc, response: { authenticatorData, signature, userHandle : userHandleFromAuthenticator, clientDataJSON } } = Assertioncredential;
+
+                console.log(Assertioncredential)
+                // decode clientDataJSON
+                const utf8Decoder = new TextDecoder('utf-8');
+                const decodedClientData = utf8Decoder.decode(Assertioncredential.response.clientDataJSON)
+                const { challenge: challengeFromAuthenticator } = JSON.parse(decodedClientData);
+
+                const data = {
+                    userid: loginUser,
+                    credentialId:cc,
+                    clientData: encodeUint8ArrayToBase64url(new Uint8Array(clientDataJSON)),
+                    challenge: challengeFromAuthenticator,
+                    userHandle: userHandle,
+                    authenticatorData: encodeUint8ArrayToBase64url(new Uint8Array(authenticatorData)),
+                    sig: encodeUint8ArrayToBase64url(new Uint8Array(signature))
+                };
+
+                const r = await fetch('/fodo2.asmx/VerifyAssertion', {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": 'application/text; charset=utf-8;',
+                    },
+                    body: JSON.stringify(data)
+                })
+
+                const { status: statusFromVerifyAssertion, data: dataFromVerifyAssertion } = await r.json();
+                console.log(statusFromVerifyAssertion, dataFromVerifyAssertion)
+                if (statusFromVerifyAssertion === 'OK') {
+                    alert('login success')
+                } else {
+                    alert('login fail')
+                }
+            })
+
         });
     </script>
 </body>

@@ -1,7 +1,8 @@
 ﻿using System;
 using System.Runtime.InteropServices;
 
-namespace fido2prj.Fido2Lib.Interop
+
+namespace Fido2Net.Interop
 {
     /// <summary>
     /// The signature for a callback for opening a FIDO2 device

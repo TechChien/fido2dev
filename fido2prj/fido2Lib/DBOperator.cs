@@ -27,6 +27,7 @@ namespace fido2prj.Fido2Lib
                 {
                     mySqlCommand.Parameters.AddWithValue("@userHandle", Base64UrlHelper.EncodeBase64Url(id));
                     mySqlCommand.Parameters.AddWithValue("@challenge", Base64UrlHelper.EncodeBase64Url(chanllege));
+                    mySqlCommand.ExecuteNonQuery();
                 }
             }
         }
@@ -43,6 +44,44 @@ namespace fido2prj.Fido2Lib
                 }
             }
         }
+
+        public string getChallengeFromTemp(string userHandle)
+        {
+            try
+            {
+                string respStr = "";
+                using (MySqlConnection connection = new MySqlConnection(connectionString))
+                {
+                    connection.Open();
+                    string sql = "select challenge from tbl_temp where userHandle = @userHandle";
+                    using (MySqlCommand mySqlCommand = new MySqlCommand(sql, connection))
+                    {
+                        mySqlCommand.Parameters.AddWithValue("@userHandle", userHandle);
+                        // to do 
+                        using (MySqlDataReader dr = mySqlCommand.ExecuteReader())
+                        {
+                            while (dr.Read())
+                            {
+                                respStr = dr["challenge"].ToString();
+                            }
+                        }
+                    }
+                    //sql = string.Format("delete from tbl_temp  where userHandle = {0}", userHandle);
+                    //using (MySqlCommand mySqlCommand = new MySqlCommand(sql, connection))
+                    //{
+                    //    // to do 
+                    //    mySqlCommand.ExecuteNonQuery();
+                    //}
+                }
+                return respStr;
+            }
+            catch(Exception e)
+            {
+                return "";
+            }
+            
+        }
+
 
         // get credential from db
         public void getCredentialDB(string username)
